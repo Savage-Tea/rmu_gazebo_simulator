@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    robot_name: "red_standard_robot1"
+    imu_topic: "livox/imu"
+    use_sim_time: true

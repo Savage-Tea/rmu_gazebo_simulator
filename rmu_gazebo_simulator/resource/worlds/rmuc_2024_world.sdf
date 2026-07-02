@@ -1,6 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <sdf version='1.7'>
   <world name='default'>
+    <!-- Physics: 0.5ms step for Airy LiDAR simulation -->
+    <physics type="ode">
+      <max_step_size>0.0005</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>2000</real_time_update_rate>
+    </physics>
+
     <!-- Physics -->
     <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics">
     </plugin>
@@ -15,10 +22,20 @@
 
     <!-- Generates rendering sensor data -->
     <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
-      <render_engine>ogre</render_engine>
+      <render_engine>ogre2</render_engine>
     </plugin>
 
     <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu">
+    </plugin>
+
+    <!-- Airy 96-line GPU LiDAR Plugin -->
+    <plugin filename="libairy_gazebo_plugin.so"
+            name="airy_gazebo_plugin::AiryGpuLidarPlugin">
+      <robot_name>red_standard_robot1</robot_name>
+      <lidar_link>front_mid360</lidar_link>
+      <rpm>600</rpm>
+      <max_range>60.0</max_range>
+      <min_range>0.1</min_range>
     </plugin>
 
     <light type='directional' name='direct_light'>

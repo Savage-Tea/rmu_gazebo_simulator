@@ -24,3 +24,7 @@ repositories:
     type: git
     url: https://github.com/SMBU-PolarBear-Robotics-Team/pb2025_robot_description.git
     version: a0541dddcbfe376f369a6345b532a10923ad9149
+  rslidar_msg:
+    type: git
+    url: https://github.com/SMBU-PolarBear-Robotics-Team/rslidar_msg.git
+    version: main
