@@ -146,6 +146,11 @@ void AiryGpuLidarPlugin::renderBlock(
   // Retrieve ranges (96 floats)
   const auto & ranges = gpu_rays_->Ranges();
 
+  // Fix #8: ensure Ranges() returned the expected number of elements
+  if (ranges.size() < static_cast<size_t>(kNumLines)) {
+    return;  // sensor not fully configured yet
+  }
+
   // Convert spherical to Cartesian
   float xyz[kNumLines * 3];
   sphericalToCartesian(

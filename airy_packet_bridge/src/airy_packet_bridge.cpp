@@ -20,6 +20,7 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
   // Parameters
   // =========================================================================
   robot_name_ = this->declare_parameter("robot_name", "red_standard_robot1");
+  lidar_link_ = this->declare_parameter("lidar_link", "front_mid360");
   imu_topic_ = this->declare_parameter("imu_topic", "livox/imu");
 
   // =========================================================================
@@ -41,11 +42,11 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
     });
 
   // =========================================================================
-  // Gazebo Transport subscription
+  // Gazebo Transport subscription (Fix #5: uses lidar_link_ parameter)
   // =========================================================================
   ign_node_ = std::make_shared<ignition::transport::Node>();
   std::string gz_topic = "/world/default/model/" + robot_name_ +
-    "/link/front_mid360/sensor/airy_lidar/scan/points";
+    "/link/" + lidar_link_ + "/sensor/airy_lidar/scan/points";
 
   if (!ign_node_->Subscribe(gz_topic, &AiryPacketBridge::onGpuLidarBlock, this)) {
     RCLCPP_ERROR(this->get_logger(),
@@ -56,7 +57,7 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
   }
 
   RCLCPP_INFO(this->get_logger(),
-    "AiryPacketBridge ready. robot=%s", robot_name_.c_str());
+    "AiryPacketBridge ready. robot=%s, link=%s", robot_name_.c_str(), lidar_link_.c_str());
 }
 
 // ===========================================================================
@@ -65,8 +66,10 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
 void AiryPacketBridge::onGpuLidarBlock(
   const ignition::msgs::PointCloudPacked & msg)
 {
-  // Validate
-  if (msg.field() != "xyz" || msg.width() != MsopConstants::kTotalLines) {
+  // Fix #3: validate message payload size to prevent out-of-bounds read
+  if (msg.field() != "xyz" ||
+      msg.width() != MsopConstants::kTotalLines ||
+      static_cast<int>(msg.data().size()) < MsopConstants::kExpectedDataSize) {
     return;
   }
 
@@ -99,6 +102,24 @@ void AiryPacketBridge::onGpuLidarBlock(
   }
 
   if (!azimuth_set) return;  // all NAN — skip
+
+  // =========================================================================
+  // Fix #7: azimuth continuity check — detect dropped messages
+  // =========================================================================
+  if (last_azimuth_valid_) {
+    double expected_azimuth = last_azimuth_deg_ + 0.4;  // kAzimuthPerBlock ~0.4°
+    if (expected_azimuth >= 180.0) expected_azimuth -= 360.0;
+    double gap = std::abs(sample.azimuth_deg - expected_azimuth);
+    // Allow small tolerance for floating-point rounding
+    if (gap > 0.8) {  // more than 2 blocks' worth of gap
+      RCLCPP_WARN(this->get_logger(),
+        "Azimuth discontinuity detected (last=%.2f, cur=%.2f, gap=%.2f). Resetting ring buffer.",
+        last_azimuth_deg_, sample.azimuth_deg, gap);
+      ring_idx_ = 0;
+    }
+  }
+  last_azimuth_deg_ = sample.azimuth_deg;
+  last_azimuth_valid_ = true;
 
   // =========================================================================
   // Insert into ring buffer
@@ -144,15 +165,28 @@ void AiryPacketBridge::buildMsopPacket(
   // offset 4-15: reserved + packet counters (leave zero)
   buf[16] = 0x00;  // data_type[0] = 0 (point cloud data)
   buf[17] = 0x03;  // data_type[1] = 3 (dual return mode)
-  // offset 18-27: UTC timestamp
-  uint64_t usec = static_cast<uint64_t>(pkt_ts_sec * 1'000'000.0);
-  buf[18] = (usec >> 0)  & 0xFF;  // usec byte 0
-  buf[19] = (usec >> 8)  & 0xFF;  // usec byte 1
-  buf[20] = (usec >> 16) & 0xFF;  // usec byte 2
-  buf[21] = (usec >> 24) & 0xFF;  // usec byte 3
-  buf[22] = (usec >> 32) & 0xFF;  // sec byte 0
-  buf[23] = (usec >> 40) & 0xFF;  // sec byte 1
-  // offset 24-27: reserved
+
+  // Fix #6: correct Airy timestamp encoding — separate usec (4B) and sec (6B)
+  {
+    uint64_t usec_total = static_cast<uint64_t>(pkt_ts_sec * 1'000'000.0);
+    uint32_t usec = static_cast<uint32_t>(usec_total % 1'000'000ULL);
+    uint64_t sec  = usec_total / 1'000'000ULL;
+
+    // offset 18-21: uint32 microseconds within current second (little-endian)
+    buf[18] = (usec >> 0)  & 0xFF;
+    buf[19] = (usec >> 8)  & 0xFF;
+    buf[20] = (usec >> 16) & 0xFF;
+    buf[21] = (usec >> 24) & 0xFF;
+
+    // offset 22-27: uint48 seconds since epoch (little-endian)
+    buf[22] = (sec >> 0)  & 0xFF;
+    buf[23] = (sec >> 8)  & 0xFF;
+    buf[24] = (sec >> 16) & 0xFF;
+    buf[25] = (sec >> 24) & 0xFF;
+    buf[26] = (sec >> 32) & 0xFF;
+    buf[27] = (sec >> 40) & 0xFF;
+  }
+
   buf[28] = 0x0A;  // lidar_type (RSAIRY)
   buf[29] = MsopConstants::kLidarMode96;  // lidar_mode (96-line)
   // offset 30-41: reserved + temperature (leave zero)
@@ -209,7 +243,7 @@ void AiryPacketBridge::encodeBlock(
   // 48 channels × 3 bytes each
   for (int ch = 0; ch < MsopConstants::kChPerBlock; ++ch) {
     int ring = base_ring + ch;
-    encodeChannel(buf + 4 + ch * 3, ring, sample);
+    encodeChannel(buf + 4 + ch * MsopConstants::kChannelSize, ring, sample);
   }
 }
 

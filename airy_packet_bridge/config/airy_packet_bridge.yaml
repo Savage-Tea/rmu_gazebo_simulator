@@ -1,5 +1,6 @@
 /**:
   ros__parameters:
     robot_name: "red_standard_robot1"
+    lidar_link: "front_mid360"
     imu_topic: "livox/imu"
     use_sim_time: true

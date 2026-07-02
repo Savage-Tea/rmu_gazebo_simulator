@@ -11,6 +11,7 @@
 #include <rslidar_msg/msg/rslidar_packet.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,7 +29,9 @@ struct MsopConstants
   static constexpr int kTotalLines = 96;
   static constexpr int kPktSize = 1248;
   static constexpr int kHeaderSize = 42;
-  static constexpr int kBlockSize = 148;      // 2B magic + 2B azimuth + 48×3B channel
+  static constexpr int kBlockSize = 148;       // 2B magic + 2B azimuth + 48×3B channel
+  static constexpr int kChannelSize = 3;        // 2B distance + 1B intensity
+  static constexpr int kExpectedDataSize = kTotalLines * 3 * static_cast<int>(sizeof(float));
   static constexpr double kDistanceRes = 0.005;
   static constexpr int kPktsPerRevolution = 225;  // 100ms / 444.44μs
   static constexpr uint8_t kLidarMode96 = 0x02;
@@ -36,12 +39,6 @@ struct MsopConstants
   // MSOP magic bytes
   static constexpr uint8_t kMsopMagic[4] = {0x55, 0xAA, 0x05, 0x5A};
   static constexpr uint8_t kBlockMagic[2] = {0xFF, 0xEE};
-
-  // Airy Side mode firing time offsets (μs), 12 groups × 8 channels
-  static constexpr double kChanTssUs[12] = {
-    0.0, 11.424, 22.848, 34.272, 45.696, 57.120,
-    68.544, 79.968, 91.392, 99.008, 110.432, 119.856
-  };
 };
 
 // ===========================================================================
@@ -122,11 +119,16 @@ private:
   AzimuthSample ring_[4];
   int ring_idx_{0};
 
+  // Azimuth tracking for drop detection (Fix #7)
+  double last_azimuth_deg_{0.0};
+  bool last_azimuth_valid_{false};
+
   // Packet sequencing
   uint32_t pkt_seq_{0};
 
   // Parameters
   std::string robot_name_;
+  std::string lidar_link_;
   std::string imu_topic_;
 };
 
