@@ -74,12 +74,16 @@ private:
   // ===========================================================================
   // State
   // ===========================================================================
+  // Fix #2: persistent Node so publisher outlives Configure()
+  std::shared_ptr<ignition::transport::Node> ign_node_;
+  ignition::transport::Node::Publisher pub_;
+
   ignition::gazebo::Entity lidar_entity_{ignition::gazebo::kNullEntity};
   ignition::rendering::GpuRaysPtr gpu_rays_;
-  ignition::transport::Node::Publisher pub_;
 
   std::string robot_name_;
   std::string lidar_link_;
+  std::string full_entity_name_;  // "robot_name::lidar_link"
   double max_range_{60.0};
   double min_range_{0.1};
 
@@ -87,7 +91,8 @@ private:
   double current_azimuth_deg_{-180.0};
   double vertical_angles_rad_[kNumLines];
 
-  bool initialized_{false};
+  bool rendering_ready_{false};
+  bool lidar_entity_found_{false};
 };
 
 }  // namespace airy_gazebo_plugin

@@ -65,36 +65,49 @@ void AiryGpuLidarPlugin::Configure(
       gpu_rays_->SetHorizontalRayCount(1);
       gpu_rays_->SetMinRange(min_range_);
       gpu_rays_->SetMaxRange(max_range_);
-      initialized_ = true;
+      rendering_ready_ = true;
     }
   }
 
   // =========================================================================
-  // Gazebo Transport publisher
+  // Gazebo Transport publisher (Fix #2: persistent Node prevents dangling handle)
   // =========================================================================
+  ign_node_ = std::make_shared<ignition::transport::Node>();
   std::string topic = "/world/default/model/" + robot_name_ +
     "/link/" + lidar_link_ + "/sensor/airy_lidar/scan/points";
-  pub_ = ignition::transport::Node().Advertise<ignition::msgs::PointCloudPacked>(topic);
+  pub_ = ign_node_->Advertise<ignition::msgs::PointCloudPacked>(topic);
 
   // =========================================================================
-  // Find LiDAR link entity in ECS
+  // Store entity name for deferred lookup in PostUpdate (Fix #1)
+  // The robot is spawned dynamically after Configure, so the entity may not
+  // exist yet.  We search for it at the start of every PostUpdate until found.
   // =========================================================================
-  std::string full_name = robot_name_ + "::" + lidar_link_;
-  ecm.Each<components::Name, components::ParentEntity>(
-    [&](const Entity & ent, const components::Name * name, const components::ParentEntity *) {
-      if (name->Data() == full_name) {
-        lidar_entity_ = ent;
-        return false;  // stop iteration
-      }
-      return true;
-    });
+  full_entity_name_ = robot_name_ + "::" + lidar_link_;
+  rendering_ready_ = (gpu_rays_ != nullptr);
 }
 
 void AiryGpuLidarPlugin::PostUpdate(
   const UpdateInfo & info,
   const EntityComponentManager & ecm)
 {
-  if (!initialized_ || lidar_entity_ == kNullEntity) return;
+  if (!rendering_ready_) return;
+
+  // =========================================================================
+  // Fix #1: Deferred entity lookup — robot may be spawned after Configure
+  // =========================================================================
+  if (!lidar_entity_found_) {
+    ecm.Each<components::Name, components::ParentEntity>(
+      [&](const Entity & ent, const components::Name * name,
+          const components::ParentEntity *) {
+        if (name->Data() == full_entity_name_) {
+          lidar_entity_ = ent;
+          lidar_entity_found_ = true;
+          return false;  // stop iteration
+        }
+        return true;
+      });
+    if (!lidar_entity_found_) return;  // not spawned yet, try again next step
+  }
 
   // =========================================================================
   // Read LiDAR world pose from ECS
