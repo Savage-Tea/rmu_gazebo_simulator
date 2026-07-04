@@ -6,9 +6,9 @@
 
 #include <ignition/gazebo/components/Name.hh>
 #include <ignition/gazebo/components/ParentEntity.hh>
-#include <ignition/gazebo/components/WorldPose.hh>
+#include <ignition/gazebo/components/Pose.hh>
 #include <ignition/math/Pose3.hh>
-#include <ignition/msgs/point_cloud_packed.pb.h>
+#include <ignition/msgs/pointcloud_packed.pb.h>
 #include <ignition/plugin/Register.hh>
 #include <ignition/rendering/RenderingIface.hh>
 #include <ignition/rendering/Scene.hh>

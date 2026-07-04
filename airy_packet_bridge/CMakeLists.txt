@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-find_package(ignition-transport11 REQUIRED)
-
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/airy_packet_bridge.cpp
 )
@@ -16,10 +14,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN airy_packet_bridge::AiryPacketBridge
   EXECUTABLE airy_packet_bridge_node
-)
-
-target_link_libraries(${PROJECT_NAME}
-  ignition-transport11::ignition-transport11
 )
 
 install(DIRECTORY config launch

@@ -64,6 +64,56 @@ def generate_launch_description():
         xmacro.generate({"global_initial_color": robot["color"]})
         robot_xml = xmacro.to_string()
 
+        # Inject Airy 96-line GpuLidar sensor into front_mid360 link
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(robot_xml)
+        airy_sensor_xml = '''<sensor type="gpu_lidar" name="front_airy_sensor">
+            <ignition_frame_id>front_mid360</ignition_frame_id>
+            <pose>0 0 0.06 0 0 0</pose>
+            <always_on>true</always_on>
+            <visualize>true</visualize>
+            <update_rate>10</update_rate>
+            <ray>
+              <scan>
+                <horizontal>
+                  <samples>900</samples>
+                  <resolution>1.0</resolution>
+                  <min_angle>-3.14159</min_angle>
+                  <max_angle>3.14159</max_angle>
+                </horizontal>
+                <vertical>
+                  <samples>96</samples>
+                  <min_angle>-0.785398</min_angle>
+                  <max_angle>0.785398</max_angle>
+                </vertical>
+              </scan>
+              <range>
+                <min>0.1</min>
+                <max>60.0</max>
+                <resolution>0.005</resolution>
+              </range>
+            </ray>
+            <noise>
+              <type>gaussian</type>
+              <mean>0.0</mean>
+              <stddev>0.01</stddev>
+            </noise>
+          </sensor>'''
+        for link in root.iter('link'):
+            if link.get('name') == 'front_mid360':
+                airy_elem = ET.fromstring(airy_sensor_xml)
+                link.append(airy_elem)
+                break
+
+        # DEBUG: verify sensor injection
+        found = False
+        for sensor in root.iter('sensor'):
+            if sensor.get('name') == 'front_airy_sensor':
+                found = True; break
+        print(f"[spawn_robots] Injected front_airy_sensor into {robot['name']}: {found}")
+
+        robot_xml = ET.tostring(root, encoding='unicode')
+
         # Generate URDF from SDF
         urdf_generator = UrdfGenerator()
         urdf_generator.parse_from_sdf_string(robot_xml)

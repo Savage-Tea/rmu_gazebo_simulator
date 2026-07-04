@@ -28,15 +28,13 @@
     <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu">
     </plugin>
 
-    <!-- Airy 96-line GPU LiDAR Plugin -->
-    <plugin filename="libairy_gazebo_plugin.so"
-            name="airy_gazebo_plugin::AiryGpuLidarPlugin">
-      <robot_name>red_standard_robot1</robot_name>
-      <lidar_link>front_mid360</lidar_link>
-      <rpm>600</rpm>
-      <max_range>60.0</max_range>
-      <min_range>0.1</min_range>
-    </plugin>
+    <!-- Airy 96-line GPU LiDAR: standalone sensor at robot spawn position -->
+    <model name='airy_lidar'>
+      <include>
+        <uri>model://airy_lidar</uri>
+      </include>
+      <pose>3.4 9.5 0.28 0 0 0</pose>
+    </model>
 
     <light type='directional' name='direct_light'>
       <visualize>false</visualize>

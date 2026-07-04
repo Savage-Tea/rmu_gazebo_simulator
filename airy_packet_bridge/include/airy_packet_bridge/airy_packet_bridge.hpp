@@ -5,11 +5,13 @@
 #ifndef AIRY_PACKET_BRIDGE__AIRY_PACKET_BRIDGE_HPP_
 #define AIRY_PACKET_BRIDGE__AIRY_PACKET_BRIDGE_HPP_
 
-#include <ignition/msgs/point_cloud_packed.pb.h>
-#include <ignition/transport/Node.hh>
 #include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <rslidar_msg/msg/rslidar_packet.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -31,9 +33,8 @@ struct MsopConstants
   static constexpr int kHeaderSize = 42;
   static constexpr int kBlockSize = 148;       // 2B magic + 2B azimuth + 48×3B channel
   static constexpr int kChannelSize = 3;        // 2B distance + 1B intensity
-  static constexpr int kExpectedDataSize = kTotalLines * 3 * static_cast<int>(sizeof(float));
+  static constexpr int kPktsPerRevolution = 225;
   static constexpr double kDistanceRes = 0.005;
-  static constexpr int kPktsPerRevolution = 225;  // 100ms / 444.44μs
   static constexpr uint8_t kLidarMode96 = 0x02;
 
   // MSOP magic bytes
@@ -55,7 +56,7 @@ struct AzimuthSample
 };
 
 // ===========================================================================
-// Main bridge node
+// Main bridge node: ROS2 PointCloud2 → Airy MSOP packets
 // ===========================================================================
 class AiryPacketBridge : public rclcpp::Node
 {
@@ -64,12 +65,12 @@ public:
 
 private:
   // =========================================================================
-  // Gazebo Transport callback
+  // ROS 2 PointCloud2 callback
   // =========================================================================
-  void onGpuLidarBlock(const ignition::msgs::PointCloudPacked & msg);
+  void onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
   // =========================================================================
-  // MSOP packet construction
+  // MSOP packet construction (unchanged)
   // =========================================================================
   void buildMsopPacket(
     const AzimuthSample & az0,
@@ -105,15 +106,18 @@ private:
     return static_cast<uint16_t>(dist / MsopConstants::kDistanceRes) & 0x3FFF;
   }
 
+  void onTimer();
+
   // =========================================================================
   // Members
   // =========================================================================
-  std::shared_ptr<ignition::transport::Node> ign_node_;
-
   // ROS 2
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<rslidar_msg::msg::RslidarPacket>::SharedPtr packet_pub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr gt_odom_sub_;
+  rclcpp::TimerBase::SharedPtr pkt_timer_;
 
   // Ring buffer (4 azimuth samples → 1 MSOP packet)
   AzimuthSample ring_[4];
@@ -126,10 +130,22 @@ private:
   // Packet sequencing
   uint32_t pkt_seq_{0};
 
+  // Cloud buffer for timer-driven column extraction
+  std::vector<float> cloud_xs_, cloud_ys_, cloud_zs_;
+  uint32_t cloud_w_{0}, cloud_h_{0};
+  double cloud_ts_{0.0};
+  uint32_t cloud_col_{0};
+  bool cloud_fresh_{false};
+
+  // GT odometry tracking for synthetic acceleration
+  rclcpp::Time last_gt_time_{0, 0, RCL_ROS_TIME};
+  double last_gt_vx_{0}, last_gt_vy_{0}, last_gt_vz_{0};
+  sensor_msgs::msg::Imu last_imu_;
+
   // Parameters
   std::string robot_name_;
-  std::string lidar_link_;
   std::string imu_topic_;
+  std::string cloud_topic_;
 };
 
 }  // namespace airy_packet_bridge

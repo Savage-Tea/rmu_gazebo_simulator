@@ -1,0 +1,49 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <model name="airy_lidar">
+    <static>true</static>
+    <link name="airy_link">
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz>
+          <iyy>0.0001</iyy><iyz>0</iyz>
+          <izz>0.0001</izz>
+        </inertia>
+      </inertial>
+      <!-- Airy 96-line GpuLidar: 360° horizontal, 90° vertical (-45°~+45°) -->
+      <sensor type="gpu_lidar" name="airy_sensor">
+        <ignition_frame_id>airy_sensor</ignition_frame_id>
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>10</update_rate>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>900</samples>           <!-- 360° / 0.4° = 900 azimuth steps -->
+              <resolution>1.0</resolution>
+              <min_angle>-3.14159</min_angle>  <!-- -180° -->
+              <max_angle>3.14159</max_angle>   <!-- +180° -->
+            </horizontal>
+            <vertical>
+              <samples>96</samples>            <!-- 96 lines -->
+              <min_angle>-0.785398</min_angle> <!-- -45° in radians -->
+              <max_angle>0.785398</max_angle>  <!-- +45° in radians -->
+            </vertical>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>60.0</max>
+            <resolution>0.005</resolution>     <!-- 0.5cm range resolution -->
+          </range>
+        </ray>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>                <!-- 1cm noise -->
+        </noise>
+      </sensor>
+    </link>
+  </model>
+</sdf>
