@@ -22,43 +22,23 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
     "/lidar/packets", rclcpp::SensorDataQoS());
   imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>(
     "/lidar/imu", rclcpp::SensorDataQoS());
+  gt_odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>(
+    "/gt_odometry", rclcpp::SensorDataQoS());
 
-  // Subscribe to real Gazebo IMU (orientation + angular velocity)
+  // Passthrough: Gazebo IMU → /lidar/imu directly
+  // Gazebo IMU sensor already provides orientation, angular velocity,
+  // and linear acceleration (including gravity). No synthesis needed.
   imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
     imu_topic_, rclcpp::SensorDataQoS(),
     [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
-      last_imu_ = *msg;
+      imu_pub_->publish(*msg);
     });
 
-  // Subscribe to GT odometry: compute a=dv/dt and inject into synthetic IMU
+  // Passthrough: GT odometry → /gt_odometry for evo accuracy comparison
   gt_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
     "chassis_odometry_gt", rclcpp::SensorDataQoS(),
     [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
-      auto now = this->now();
-      double dt = (now - last_gt_time_).seconds();
-      if (last_gt_time_.nanoseconds() > 0 && dt > 0.0001 && dt < 1.0) {
-        // a = dv/dt from GT odometry velocity change
-        double ax = (msg->twist.twist.linear.x - last_gt_vx_) / dt;
-        double ay = (msg->twist.twist.linear.y - last_gt_vy_) / dt;
-        double az = (msg->twist.twist.linear.z - last_gt_vz_) / dt;
-        // Only emit when non-zero acceleration detected
-        if (std::abs(ax) > 0.01 || std::abs(ay) > 0.01 || std::abs(az) > 0.01) {
-          sensor_msgs::msg::Imu synth = last_imu_;
-          synth.header.stamp = now;
-          synth.linear_acceleration.x += ax;
-          synth.linear_acceleration.y += ay;
-          synth.linear_acceleration.z += az;
-          imu_pub_->publish(synth);
-        }
-      }
-      // Always publish IMU with gravity (for continuous state prediction)
-      sensor_msgs::msg::Imu grav = last_imu_;
-      grav.header.stamp = now;
-      imu_pub_->publish(grav);
-      last_gt_time_ = now;
-      last_gt_vx_ = msg->twist.twist.linear.x;
-      last_gt_vy_ = msg->twist.twist.linear.y;
-      last_gt_vz_ = msg->twist.twist.linear.z;
+      gt_odom_pub_->publish(*msg);
     });
 
   cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -71,7 +51,7 @@ AiryPacketBridge::AiryPacketBridge(const rclcpp::NodeOptions & options)
     std::bind(&AiryPacketBridge::onTimer, this));
 
   RCLCPP_INFO(this->get_logger(),
-    "AiryPacketBridge ready. robot=%s, cloud=%s, imu=%s, pkt_timer=444us",
+    "AiryPacketBridge ready. robot=%s, cloud=%s, imu=%s (passthrough), gt_odom → /gt_odometry, pkt_timer=444us",
     robot_name_.c_str(), cloud_topic_.c_str(), imu_topic_.c_str());
 }
 

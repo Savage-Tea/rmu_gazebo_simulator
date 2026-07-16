@@ -117,6 +117,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr gt_odom_sub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gt_odom_pub_;
   rclcpp::TimerBase::SharedPtr pkt_timer_;
 
   // Ring buffer (4 azimuth samples → 1 MSOP packet)
@@ -136,11 +137,6 @@ private:
   double cloud_ts_{0.0};
   uint32_t cloud_col_{0};
   bool cloud_fresh_{false};
-
-  // GT odometry tracking for synthetic acceleration
-  rclcpp::Time last_gt_time_{0, 0, RCL_ROS_TIME};
-  double last_gt_vx_{0}, last_gt_vy_{0}, last_gt_vz_{0};
-  sensor_msgs::msg::Imu last_imu_;
 
   // Parameters
   std::string robot_name_;
