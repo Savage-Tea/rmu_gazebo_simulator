@@ -61,3 +61,12 @@ robots:
     #   y_pose: "6.45"
     #   z_pose: "0.28"
     #   yaw: "3.14"
+
+  # 场地中心 (14.88, 8.0)，模型角点对齐原点（与 rmuc_2025 约定一致）
+  rmuc_2026:
+    - name: "red_standard_robot1"
+      color: "red"
+      x_pose: "14.88"
+      y_pose: "8.0"
+      z_pose: "0.28"
+      yaw: "0.0"

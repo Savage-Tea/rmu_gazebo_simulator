@@ -104,8 +104,17 @@ rmu_gazebo_simulator/
 ## 当前待办事项
 
 ### 进行中
-- [ ] **添加 RMUC 2026 场地模型** — STP 文件在 `~/Downloads/RMUC2026_V2.0.0.stp`，
-      步骤见 `docs/add-venue-model.md`（需 FreeCAD 转 STL）
+- [ ] **添加 RMUC 2026 场地模型** — STP 在 `~/Downloads/UTF-8__RMUC2026_V2.0.0.stp`（1.25 GB），
+      步骤见 `docs/add-venue-model.md`
+  - [x] 骨架文件已建：`models/rmuc_2026/`（config/sdf/meshes 占位）、`rmuc_2026_world.sdf`、
+        `gz_world.yaml` 中 `rmuc_2026` 段（骨架 world 不含 standalone airy_lidar，走注入方案）
+  - [x] STP→STL 转换（pythonocc 曲面细分 → 15mm 体素聚类 → MeshLab 二次误差减面，
+        25 万面 / 12MB；原始 STP 单位毫米、地面在 z=-1941mm，已平移归零；
+        mesh 包围盒 29.75×16×3.8m，含地面大面 + 围墙 + 场地部件）
+  - [x] `model.sdf` link pose 已按 rmuc_2025 约定（网格角点对齐原点）设 14.88 6.38 0；
+        机器人初始位姿暂设场地中心 (14.88, 8.0, 0.28)
+  - [ ] 启动验证（本机无 ROS/ign，需在 Docker 或装有环境机器上跑）；确认场地布局无异常后
+        再把 `world:` 切到 `rmuc_2026`
 
 ### 待优化（按优先级）
 - [ ] **P0** 删除废弃的 `airy_gazebo_plugin/` 包（被 Fortress 架构替代）

@@ -4,8 +4,25 @@
 
 ## 目标
 
-- 输入：`~/Downloads/RMUC2026_V2.0.0.stp`
+- 输入：`~/Downloads/UTF-8__RMUC2026_V2.0.0.stp`（1.25 GB，文件名注意 UTF-8 前缀）
 - 输出：`resource/models/rmuc_2026/` + `resource/worlds/rmuc_2026_world.sdf` + `gz_world.yaml` 注册
+
+## 当前进度
+
+- [x] Step 1 STP→STL 转换完成（`meshes/rmuc_2026.stl`，25 万面 / 12MB）
+- [x] Step 2/3/4/5 全部就绪（model.config / model.sdf / rmuc_2026_world.sdf / gz_world.yaml 中 rmuc_2026 段）
+- [ ] Step 5 `gz_world.yaml` 中 `world:` 切到 `rmuc_2026`（启动验证通过后）
+- [ ] Step 6 启动验证
+
+### 实际转换流程（2026-08-23，与 FreeCAD 方案不同）
+
+1. **pythonocc-core 读 STP**：`TransferRoot` 导入 2.2 min，292,566 面全部转换
+2. **BRepMesh 曲面细分**：deflection 5µm（注意 STEP 单位是毫米，勿按米传参）
+3. **流式写 STL**：6700 万三角形 / 3.35GB
+4. **坐标修正**：原始地面在 z=-1941mm（模型原点在墙顶），平移 +1941mm 归零
+5. **15mm 体素聚类**（numpy 自定义脚本）：6700 万 → 52 万面，同时换算米
+6. **MeshLab quadric 减面** → 25 万面；剔除 1 个减面尖峰顶点
+7. 最终：29.75×16×3.8m，地面 480m²（大面保留），围墙+场地部件完整
 
 ## Step 1 — STP → STL 转换
 
@@ -20,7 +37,7 @@ mkdir -p ~/Documents/RoboMaster/S26-27/Nav/rmu_gazebo_simulator/rmu_gazebo_simul
 freecadcmd -c "
 import Mesh
 import importSTEP
-mesh = importSTEP.open('/home/SavageTea/Downloads/RMUC2026_V2.0.0.stp')
+mesh = importSTEP.open('/home/SavageTea/Downloads/UTF-8__RMUC2026_V2.0.0.stp')
 Mesh.export([mesh], '/home/SavageTea/Documents/RoboMaster/S26-27/Nav/rmu_gazebo_simulator/rmu_gazebo_simulator/resource/models/rmuc_2026/meshes/rmuc_2026.stl')
 print('Done')
 "
