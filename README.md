@@ -6,7 +6,7 @@ rmu_gazebo_simulator 是基于 Gazebo (Ignition 字母版本) 的仿真环境，
 
 目前 rmu_gazebo_simulator 提供以下功能：
 
-- rmul_2024, rmuc_2024, rmul_2025, rmuc_2025 仿真世界模型
+- rmul_2024, rmuc_2024, rmul_2025, rmuc_2025, rmuc_2026 仿真世界模型
 
 - 网页端局域网联机对战
 
@@ -138,7 +138,15 @@ python3 src/rmu_gazebo_simulator/rmu_gazebo_simulator/scripts/referee_web/main.p
 
 #### 2.3.3 切换仿真世界
 
-修改 [gz_world.yaml](./rmu_gazebo_simulator/config/gz_world.yaml) 中的 `world`。当前可选: `rmul_2024`, `rmuc_2024`, `rmul_2025`, `rmuc_2025`
+修改 [gz_world.yaml](./rmu_gazebo_simulator/config/gz_world.yaml) 中的 `world`。当前可选: `rmul_2024`, `rmuc_2024`, `rmul_2025`, `rmuc_2025`, `rmuc_2026`
+
+> [!NOTE]
+> **rmuc_2026 场地网格 (STL) 不在 git 中管理**，使用前需手动下载并放置：
+>
+> 1. 从网盘下载: https://cloud.tsinghua.edu.cn/f/5d07e57e04a2430784c2/
+> 2. 放置到 `rmu_gazebo_simulator/resource/models/rmuc_2026/meshes/rmuc_2026.stl`
+>
+> 详见 [docs/add-venue-model.md](./docs/add-venue-model.md)
 
 ## 配套导航仿真仓库
 
