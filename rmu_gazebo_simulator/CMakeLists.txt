@@ -26,8 +26,9 @@ find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+# NOTE: USE_SCOPED_HEADER_INSTALL_DIR dropped on purpose — requires
+# ament_cmake >= 1.4, not available on ROS 2 Humble (1.3.x).
 ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR
   INSTALL_TO_SHARE
   resource
   config
