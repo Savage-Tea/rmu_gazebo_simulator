@@ -23,3 +23,4 @@ test/
 # rmuc_2026.stl: generated from RMUC2026_V2.0.0.stp,
 # see docs/add-venue-model.md
 *.stl
+*.STL
