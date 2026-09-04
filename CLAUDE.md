@@ -108,9 +108,11 @@ rmu_gazebo_simulator/
       步骤见 `docs/add-venue-model.md`
   - [x] 骨架文件已建：`models/rmuc_2026/`（config/sdf/meshes 占位）、`rmuc_2026_world.sdf`、
         `gz_world.yaml` 中 `rmuc_2026` 段（骨架 world 不含 standalone airy_lidar，走注入方案）
-  - [x] STP→STL 转换（pythonocc 曲面细分 → 15mm 体素聚类 → MeshLab 二次误差减面，
-        25 万面 / 12MB；原始 STP 单位毫米、地面在 z=-1941mm，已平移归零；
-        mesh 包围盒 29.75×16×3.8m，含地面大面 + 围墙 + 场地部件）
+  - [x] STP→STL 转换（pythonocc 曲面细分 deflection=5mm 毫米单位 → 15mm 体素聚类，
+        37 万面 / 18MB（2026-09-04 重新转换）；原始 STP 单位毫米、地面在 z=-1941mm，已平移归零；
+        mesh 包围盒 29.75×16×3.8m，含地面大面 + 围墙 + 场地部件。
+        注意：**禁用 MeshLab 二次误差减面**——会把细杆/小结构整体塌缩丢失（狗洞区域曾因此缺失），
+        聚类法才能保结构）
   - [x] `model.sdf` link pose 已按 rmuc_2025 约定（网格角点对齐原点）设 14.88 6.38 0；
         机器人初始位姿暂设场地中心 (14.88, 8.0, 0.28)
   - [ ] 启动验证（本机无 ROS/ign，需在 Docker 或装有环境机器上跑）；确认场地布局无异常后
